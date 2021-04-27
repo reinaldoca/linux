@@ -313,6 +313,11 @@ mkpart primary 1049kB 100%
 Run the print command to check whether the new partition is created.
 The following figure shows that the new GPT partition number is still 1, but the capacity of the partition has been increased to 3 TiB.
 
+
+![alt text](https://raw.githubusercontent.com/reinaldoca/linux/main/p70886.png)
+
+
+
 GPT partitioning result
 Run the quit command to exit the Parted tool.
 The following section shows the complete sample code:
