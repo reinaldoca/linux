@@ -276,6 +276,12 @@ tmpfs 783M 0 783M 0% /run/user/0
 Option 3: Resize existing GPT partitions
 Perform the following operations to resize an existing GPT partition:
 
+
+
+![alt text](https://raw.githubusercontent.com/reinaldoca/linux/main/p70886.png)
+
+ 
+
 View the mount path of the data disk. Unmount the partition based on the returned file path and wait until the partition is unmounted.
 [root@ecshost ~]# mount | grep "/dev/vdb"
 /dev/vdb1 on /mnt type ext4 (rw,relatime,data=ordered)
