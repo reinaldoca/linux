@@ -280,6 +280,9 @@ Perform the following operations to resize an existing GPT partition:
 
 
 
+![Screenshot](p70886.png)
+
+
 ![alt text](https://raw.githubusercontent.com/reinaldoca/linux/main/p70886.png)
 
  
