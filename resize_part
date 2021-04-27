@@ -1,0 +1,174 @@
+Increase The Size Of A Linux Root Partition Without Rebooting
+Created by eknauer on Jun 07, 2016   LinuxStorage   3 Comments
+ Intermediate
+Resize A Linux Root Partition Without Rebooting
+Table Of Contents
+Introduction
+Requirements
+Provision Additional Space
+Verify
+Summary
+Introduction
+A typical Linux server deployed from a ProfitBricks supplied image has a single storage volume, /dev/vda. If we take a look at that using fdisk we will see that the disk is divided into two partitions. The first one, /dev/vda1, is the boot partition where the OS resides. The second partition, /dev/vda2, is configured as swap space.
+
+root@debian:~# fdisk -l /dev/vda
+
+Disk /dev/vda: 50 GiB, 53687091200 bytes, 104857600 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x0041f8a8
+
+Device     Boot    Start       End  Sectors Size Id Type
+/dev/vda1           2048  96471039 96468992  46G 83 Linux
+/dev/vda2       96471040 104857599  8386560   4G 82 Linux swap / Solaris
+In the example above, the total 50 GB storage volume is split into 46 GB usable space and 4 GB for swap. What if after provisioning we find that 46 GB of disk space is not enough but we prefer not to add an additional storage volume? The goal is to increase the amount of disk space available on the root filesystem. This can be accomplished with minimal disruption. We do not need to reboot the server!
+
+Requirements
+A Linux Server created from a ProfitBricks supplied image.
+SSH or console access (via the DCD) to the Linux Server.
+The partprobe command. Can be installed from the parted package on most Linux distributions.
+The fdisk, swapoff, mkswap, swapon, and resize2fs commands. Likely available by default.
+A current snapshot or other backup of the system you are working on. Just to be safe!
+Provision Additional Space
+
+To increase the size of the hard drive, go into the DCD (Data Center Designer) and upscale the drive.
+
+DCD Increase Volume Size
+
+After you have increased the amount of drive space, click on "provisioning" to process the change. Takes around a minute and your hard drive is bigger.
+
+We then need to switch off the swap - so make sure you can live a few minutes without swap space:
+
+root@debian:~# swapoff -a
+Once swap has been disabled, we need to reconfigure the partitions using fdisk:
+
+We will delete the two existing partitions first. We run fdisk /dev/vda and then use the d command to delete partition 2, and then delete partition 1. Follow the example below:
+
+root@debian:~# fdisk /dev/vda
+
+Command (m for help): d
+Partition number (1,2, default 2):
+
+Partition 2 has been deleted.
+
+Command (m for help): d
+Selected partition 1
+Partition 1 has been deleted.
+Now we recreate our partitions. In the example we have 4 GB of swap space. So we need to keep at least that much space available for the new swap partition.
+
+Recreate /dev/vda1 first. Press n to create a new partition. Enter p to create a primary partition. We can press Enter to accept the default value of 2048 for the first sector. Then enter a size for the partition. You can enter a value in GB, so if we are increasing the disk to 100 GB, we subtract our 4 GB for swap, and enter +96G for 96 GB.
+
+Command (m for help): n
+Partition type
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended (container for logical partitions)
+Select (default p): p
+Partition number (1-4, default 1): 1
+First sector (2048-209715199, default 2048):
+Last sector, +sectors or +size{K,M,G,T,P} (2048-209715199, default 209715199): +96G
+
+Created a new partition 1 of type 'Linux' and of size 96 GiB.
+Now we recreate the swap partition following a simalar process. Press n and then p to create a new primary partition. Press Enter to accept the default value for "First sector". We can also press Enter again to accept the default value for "Last sector".
+
+Command (m for help): n
+Partition type
+   p   primary (1 primary, 0 extended, 3 free)
+   e   extended (container for logical partitions)
+Select (default p): p
+Partition number (2-4, default 2): 2
+First sector (201328640-209715199, default 201328640):
+Last sector, +sectors or +size{K,M,G,T,P} (201328640-209715199, default 209715199):
+
+Created a new partition 2 of type 'Linux' and of size 4 GiB.
+Since this second partition is going to be used for swap space, we need to change the partition type. This can be done by pressing t at the fdisk prompt. We then press 2 to select the second partition. If you want to see the list of available partition types, press L, otherwise enter 82 to select "Linux swap / Solaris".
+
+Command (m for help): t
+Partition number (1,2, default 2): 2
+Partition type (type L to list all types): L
+
+ 0  Empty           24  NEC DOS         81  Minix / old Lin bf  Solaris
+ 1  FAT12           27  Hidden NTFS Win 82  Linux swap / So c1  DRDOS/sec (FAT-
+ 2  XENIX root      39  Plan 9          83  Linux           c4  DRDOS/sec (FAT-
+ 3  XENIX usr       3c  PartitionMagic  84  OS/2 hidden or  c6  DRDOS/sec (FAT-
+ 4  FAT16 <32M      40  Venix 80286     85  Linux extended  c7  Syrinx
+ 5  Extended        41  PPC PReP Boot   86  NTFS volume set da  Non-FS data
+ 6  FAT16           42  SFS             87  NTFS volume set db  CP/M / CTOS / .
+ 7  HPFS/NTFS/exFAT 4d  QNX4.x          88  Linux plaintext de  Dell Utility
+ 8  AIX             4e  QNX4.x 2nd part 8e  Linux LVM       df  BootIt
+ 9  AIX bootable    4f  QNX4.x 3rd part 93  Amoeba          e1  DOS access
+ a  OS/2 Boot Manag 50  OnTrack DM      94  Amoeba BBT      e3  DOS R/O
+ b  W95 FAT32       51  OnTrack DM6 Aux 9f  BSD/OS          e4  SpeedStor
+ c  W95 FAT32 (LBA) 52  CP/M            a0  IBM Thinkpad hi ea  Rufus alignment
+ e  W95 FAT16 (LBA) 53  OnTrack DM6 Aux a5  FreeBSD         eb  BeOS fs
+ f  W95 Ext'd (LBA) 54  OnTrackDM6      a6  OpenBSD         ee  GPT
+10  OPUS            55  EZ-Drive        a7  NeXTSTEP        ef  EFI (FAT-12/16/
+11  Hidden FAT12    56  Golden Bow      a8  Darwin UFS      f0  Linux/PA-RISC b
+12  Compaq diagnost 5c  Priam Edisk     a9  NetBSD          f1  SpeedStor
+14  Hidden FAT16 <3 61  SpeedStor       ab  Darwin boot     f4  SpeedStor
+16  Hidden FAT16    63  GNU HURD or Sys af  HFS / HFS+      f2  DOS secondary
+17  Hidden HPFS/NTF 64  Novell Netware  b7  BSDI fs         fb  VMware VMFS
+18  AST SmartSleep  65  Novell Netware  b8  BSDI swap       fc  VMware VMKCORE
+1b  Hidden W95 FAT3 70  DiskSecure Mult bb  Boot Wizard hid fd  Linux raid auto
+1c  Hidden W95 FAT3 75  PC/IX           bc  Acronis FAT32 L fe  LANstep
+1e  Hidden W95 FAT1 80  Old Minix       be  Solaris boot    ff  BBT
+Partition type (type L to list all types): 82
+fdisk helpfully informs us that we have changed the partition type with the message:
+
+Changed type of partition 'Linux' to 'Linux swap / Solaris'.
+After that, we save using the w command and are returned to a shell prompt:
+
+Command (m for help): w
+You may get a message like this before the shell prompt:
+
+The partition table has been altered.
+Calling ioctl() to re-read partition table.
+Re-reading the partition table failed.: Device or resource busy
+
+The kernel still uses the old table. The new table will be used at the next reboot or after you run partprobe(8) or kpartx(8).
+Lets forgo rebooting and instead tell the kernel about the new partitions using partprobe:
+
+root@debian:~# partprobe
+We should be returned to the shell prompt with no output from partprobe.
+
+Now we need to resize our filesystem on /dev/vda1:
+
+root@debian:~# resize2fs /dev/vda1
+resize2fs 1.42.12 (29-Aug-2014)
+Filesystem at /dev/vda1 is mounted on /; on-line resizing required
+old_desc_blocks = 2, new_desc_blocks = 3
+The filesystem on /dev/vda1 is now 25165824 (4k) blocks long.
+
+Initialize the new swap location of /dev/vda2:
+
+root@debian:~# mkswap /dev/vda2
+Setting up swapspace version 1, size = 4193276 KiB
+no label, UUID=c55c25a2-a386-4653-8455-4d9030586dd2
+Finally we edit /etc/fstab and replace the old UUID with the new one returned in the output of the mkswap command. The line to change has no value for "mount point" and has "type" set to swap.
+
+# /etc/fstab: static file system information.
+#
+# Use 'blkid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+UUID=332f8fb5-ff1f-4297-b512-f2c93a277296 /               ext4    errors=remount-ro 0       1
+/dev/fd0        /media/floppy0  auto    rw,user,noauto,exec,utf8 0       0
+UUID=c55c25a2-a386-4653-8455-4d9030586dd2       none    swap    sw      0       0
+After editing /etc/fstab, we need to enable swap again:
+
+root@debian:~# swapon -a
+Verify
+We can verify the new larger disk size by utilizing df and/or fdisk.
+
+Device     Boot     Start       End   Sectors Size Id Type
+/dev/vda1            2048 201328639 201326592  96G 83 Linux
+/dev/vda2       201328640 209715199   8386560   4G 82 Linux swap / Solaris
+We can also confirm that the server was not rebooted by looking at the output of uptime:
+
+$ uptime
+ 23:54:21 up 7 days,  1:15,  1 user,  load average: 0.00, 0.01, 0.05
+Summary
+We have successfully increased the amount of disk space available on our Linux server. If you have any questions or comments, please leave them here, or in the DevOps Community section of this site.
