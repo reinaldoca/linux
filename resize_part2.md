@@ -17,6 +17,8 @@ Data disk: an ultra disk
 Device name of the data disk: /dev/vdb
 Adjust the command or parameter settings based on the actual operating system and device name of the data disk.
 
+
+
 Check the partition table format and the file system type
 Run the following command to check the partition table format of the data disk:
 fdisk -lu /dev/vdb
